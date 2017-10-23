@@ -1,7 +1,7 @@
 ﻿#
 # config
 #
-$screenWidth = 20
+$screenWidth = 15
 $screenHeight = 10
 $backgroundCharacter = " "
 $foodCharacter = "O"
@@ -9,25 +9,19 @@ $playerCharacter = "X"
 $speed = 200
 $LastKey = "UpArrow"
 $GameState = "Running"
+$Debug = $false
 
 # prepare game
 $body = @()
 $newBodyParts = @()
 $history = @()
-$Foodx = $null
-$Foody = $null
+$Food = @{ x = $null; y = $null }
 $screenWidth = ($screenWidth-1)
 $screenHeight = ($screenHeight-1)
 $body += @{
     x = [int]($screenWidth/2)
     y = [int]($screenHeight/2)
 }
-<#
-$body += @{
-    x = 8
-    y = 9
-}
-#>
 
 while($GameState -eq "Running") {
     
@@ -82,12 +76,12 @@ while($GameState -eq "Running") {
         }
     }
 
-    <#
+    #
     # Check if moved over body part
     #
     if($body.Length -gt 1) {
         $head = $body[0]
-        $snakeHeadOnBodyPart = $body[1..$($body.Length-1)] | % {$_.x -eq $head.x -and $_.y -eq $head.y}
+        $snakeHeadOnBodyPart = $body[1..$($body.Length-1)] | Where-Object {$_.x -eq $head.x -and $_.y -eq $head.y}
         if($snakeHeadOnBodyPart) {
             $GameState = "Failed"
         }
@@ -126,31 +120,29 @@ while($GameState -eq "Running") {
     }
 
     # eating Food
-    if($Foodx -eq $body[0].x -and $Foody -eq $body[0].y) {
+    if($Food.x -eq $body[0].x -and $Food.y -eq $body[0].y) {
 
         # push new body part to temp history
         $newBodyParts += @{
-            x = $Foodx
-            y = $Foody
+            x = $Food.x
+            y = $Food.y
         }
 
-        $Foody = $null
-        $Foodx = $null
+        $Food.x = $null
     }
 
     # generate random foot if eaten
-    while(-not $Foodx) {
-        $Foodx = Get-Random -Minimum 0 -Maximum ($screenWidth)
-        $Foody = Get-Random -Minimum 0 -Maximum ($screenHeight)
+    while(-not $Food.x) {
+        $Food.x = Get-Random -Minimum 0 -Maximum ($screenWidth)
+        $Food.y = Get-Random -Minimum 0 -Maximum ($screenHeight)
 
         # if food is placed in body reset
-        $foodOnBodyPart = $body | Where-Object {$_.x -eq $Foody -and $_.y -eq $Foody}
+        $foodOnBodyPart = $body | Where-Object {$_.x -eq $Food.x -and $_.y -eq $Food.y}
         if($foodOnBodyPart) {
-            $Foody = $null
-            $Foodx = $null
+            $Food.x = $null
         }
     }
-    $screen[$Foodx,$Foody] = $foodCharacter
+    $screen[$Food.x,$Food.y] = $foodCharacter
     
     # set body parts
     $body | % {
@@ -191,10 +183,12 @@ while($GameState -eq "Running") {
     Write-Host "Player position: $($body[0].x) / $($body[0].y)"
     Write-Host "The field size is: $screenWidth / $screenHeight"
     Write-Host "Body length is: $($body.Length)"
-    Write-Host "History content:"
-    $body | % {
-        $index = $body.IndexOf($_)
-        Write-Host "$($index): $($_.x) / $($_.y)"
+    if($Debug) {
+        Write-Host "Body content:"
+        $body | % {
+            $index = $body.IndexOf($_)
+            Write-Host "$($index): $($_.x) / $($_.y)"
+        }
     }
 }
 Write-Warning "Gamestate: $GameState"
