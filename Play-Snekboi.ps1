@@ -6,11 +6,13 @@ $screenHeight = 10
 $backgroundCharacter = " "
 $foodCharacter = "O"
 $playerCharacter = "X"
-$speed = 500
+$speed = 200
 $LastKey = "UpArrow"
+$GameState = "Running"
 
 # prepare game
 $body = @()
+$newBodyParts = @()
 $history = @()
 $Foodx = $null
 $Foody = $null
@@ -20,12 +22,14 @@ $body += @{
     x = [int]($screenWidth/2)
     y = [int]($screenHeight/2)
 }
+<#
 $body += @{
     x = 8
     y = 9
 }
+#>
 
-while($true) {
+while($GameState -eq "Running") {
     
     #
     # set screen background
@@ -48,26 +52,6 @@ while($true) {
     if ([console]::KeyAvailable) {
         $key = [System.Console]::ReadKey() 
         $LastKey = $key.key
-    }
-
-    #
-    # reset snake position if out of window
-    #
-    $body | % {
-        $index = $body.IndexOf($_)
-
-        if($_.y -gt $screenHeight) {
-            $body[$index].y = 0
-        }
-        if($_.y -eq -1) {
-            $body[$index].y = $screenHeight-1
-        }
-        if($_.x -gt $screenWidth) {
-            $body[$index].x = 0
-        }
-        if($_.x -eq -1) {
-            $body[$index].x = $screenWidth-1
-        }
     }
 
     #
@@ -98,11 +82,54 @@ while($true) {
         }
     }
 
+    <#
+    # Check if moved over body part
+    #
+    if($body.Length -gt 1) {
+        $head = $body[0]
+        $snakeHeadOnBodyPart = $body[1..$($body.Length-1)] | % {$_.x -eq $head.x -and $_.y -eq $head.y}
+        if($snakeHeadOnBodyPart) {
+            $GameState = "Failed"
+        }
+    }
+    #>
+
+    #
+    # reset snake position if out of window
+    #
+    $body | % {
+        $index = $body.IndexOf($_)
+
+        if($_.y -gt $screenHeight) {
+            $body[$index].y = 0
+        }
+        if($_.y -eq -1) {
+            $body[$index].y = $screenHeight
+        }
+        if($_.x -gt $screenWidth) {
+            $body[$index].x = 0
+        }
+        if($_.x -eq -1) {
+            $body[$index].x = $screenWidth
+        }
+    }
+
+    # add body part if snake has moved over food
+    if($newBodyParts) {
+        $newBodyParts | %{
+            $newBodyPart = $_
+            $snakeOnNewBodyPart = $body | Where-Object {$_.x -eq $newBodyPart.x -and $_.y -eq $newBodyPart.y}
+            if(-not $snakeOnNewBodyPart) {
+                $body += $newBodyPart
+            }
+        }
+    }
+
     # eating Food
     if($Foodx -eq $body[0].x -and $Foody -eq $body[0].y) {
 
         # push new body part to temp history
-        $newBodyPart = @{
+        $newBodyParts += @{
             x = $Foodx
             y = $Foody
         }
@@ -111,18 +138,17 @@ while($true) {
         $Foodx = $null
     }
 
-    # add body part if snake has moved over food
-    if($newBodyPart) {
-        $snakeOnBodyPart = $body | Where-Object {$_.x -eq $newBodyPart.x -and $_.y -eq $newBodyPart.y}
-        if(-not $snakeOnBodyPart) {
-            $body += $newBodyPart
-        }
-    }
-
     # generate random foot if eaten
-    if(-not $Foodx) {
+    while(-not $Foodx) {
         $Foodx = Get-Random -Minimum 0 -Maximum ($screenWidth)
         $Foody = Get-Random -Minimum 0 -Maximum ($screenHeight)
+
+        # if food is placed in body reset
+        $foodOnBodyPart = $body | Where-Object {$_.x -eq $Foody -and $_.y -eq $Foody}
+        if($foodOnBodyPart) {
+            $Foody = $null
+            $Foodx = $null
+        }
     }
     $screen[$Foodx,$Foody] = $foodCharacter
     
@@ -141,27 +167,27 @@ while($true) {
 
         # if first line add border
         if($y -eq $screenHeight) {
-            $output += "$("--" * ($screenWidth  + 2))`n"
+            $output += "+$("-" * ($screenWidth  + 1))+`n"
         }
 
         $line = $null
         0..$screenWidth | % {
             $x = $_
 
-            $line += " $($screen[$x,$y])"
+            $line += "$($screen[$x,$y])"
         }
-        $output += "|$($line)|`n"
+        $output += "|$($line)|"
 
         # if first line add border
         if($y -eq 0) {
-            $output += " -" * ($screenWidth  + 2)
+            $output += "`n+$("-" * ($screenWidth  + 1))+"
         }
 
         return $output
     }
 
     Clear-Host
-    Write-Host $screen
+    $screen | %{Write-Host $_}
     Write-Host "Player position: $($body[0].x) / $($body[0].y)"
     Write-Host "The field size is: $screenWidth / $screenHeight"
     Write-Host "Body length is: $($body.Length)"
@@ -171,3 +197,4 @@ while($true) {
         Write-Host "$($index): $($_.x) / $($_.y)"
     }
 }
+Write-Warning "Gamestate: $GameState"
