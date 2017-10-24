@@ -13,7 +13,7 @@ See it in action:
 3. Run `Play-Snekboi.ps1`
 4. Waste your time
 
-# FAQ
+## FAQ
 
 **Why does this exist?**
 
