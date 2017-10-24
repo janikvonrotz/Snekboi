@@ -4,7 +4,7 @@ Snekboi is a PowerShell implementation of the time-waster game Snake.
 
 See it in action:
 
-![](Screencast.gif)
+![](https://raw.githubusercontent.com/janikvonrotz/Snekboi/master/screencast.gif)
 
 ## Installation
 
